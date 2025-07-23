@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
@@ -7,6 +7,8 @@ from app import schemas, models, email_utils
 from app.database import SessionLocal
 from app.config import settings
 import random
+from fastapi import Header
+
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -18,7 +20,7 @@ def get_db():
     finally:
         db.close()
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
+def create_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
@@ -30,7 +32,13 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed = pwd_context.hash(user.password)
-    db_user = models.User(email=user.email, hashed_password=hashed)
+    db_user = models.User(
+        email=user.email,
+        hashed_password=hashed,
+        full_name=user.full_name,
+        mobile_number=user.mobile_number,
+        date_of_birth=user.date_of_birth
+    )
     db.add(db_user)
     db.commit()
     return {"msg": "User registered successfully"}
@@ -40,8 +48,18 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter_by(email=user.email).first()
     if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
-    token = create_access_token({"sub": user.email}, timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
-    return {"access_token": token, "token_type": "bearer"}
+    access_token = create_token(
+        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "access"},
+        timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_token(
+        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "refresh"},
+        timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    )
+    db_user.refresh_token = refresh_token
+    db_user.refresh_token_expire = datetime.utcnow() + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    db.commit()
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 @router.post("/reset-password")
 def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
@@ -50,19 +68,76 @@ def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(
         raise HTTPException(status_code=404, detail="User not found")
     otp = str(random.randint(100000, 999999))
     db_user.otp_code = otp
-    db_user.otp_expiration = datetime.utcnow() + timedelta(minutes=5)
+    db_user.otp_expiration = datetime.utcnow() + timedelta(minutes=1)
     db.commit()
     email_utils.send_email_otp(request.email, otp)
     return {"msg": "OTP sent to email"}
 
-@router.post("/reset-password/confirm")
+@router.post("/reset-password/otp-confirm")
 def reset_confirm(data: schemas.ResetPasswordConfirm, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter_by(email=data.email).first()
-    if not db_user or db_user.otp_code != data.otp or datetime.utcnow() > db_user.otp_expiration:
+    db_user = db.query(models.User).filter_by(otp_code=data.otp).first()
+    if not db_user or datetime.utcnow() > db_user.otp_expiration:
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-    db_user.hashed_password = pwd_context.hash(data.new_password)
+    reset_token = create_token({"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "reset"}, timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES))
     db_user.otp_code = None
     db_user.otp_expiration = None
     db.commit()
-    return {"msg": "Password reset successful"}
+    return {"reset_token": reset_token, "token_type": "bearer", "msg": "OTP verified successfully"}
 
+@router.post("/reset-password/change-password")
+def change_password(data: schemas.ChangePasswordRequest,db: Session = Depends(get_db)): #, authorization: str = Header(...)
+    # if not authorization.startswith("Bearer "):
+    #     raise HTTPException(status_code=401, detail="Invalid token format")
+    # token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(data.reset_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "reset":
+            raise HTTPException(status_code=403, detail="Invalid token type")
+        email = payload.get("sub")
+    except JWTError:
+        raise HTTPException(status_code=403, detail="Invalid or expired token")
+
+    db_user = db.query(models.User).filter_by(email=email).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db_user.hashed_password = pwd_context.hash(data.new_password)
+    db.commit()
+
+    return {"msg": "Password changed successfully"}
+
+@router.post("/refresh-token")
+def refresh_token(refresh_token: str = Body(...), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=403, detail="Invalid token type")
+        email = payload.get("sub")
+    except JWTError:
+        raise HTTPException(status_code=403, detail="Invalid or expired refresh token")
+
+    db_user = db.query(models.User).filter_by(email=email).first()
+    if not db_user or db_user.refresh_token != refresh_token:
+        raise HTTPException(status_code=403, detail="Refresh token not found or mismatched")
+    if db_user.refresh_token_expire < datetime.utcnow():
+        raise HTTPException(status_code=403, detail="Refresh token expired")
+
+    new_refresh_token = create_token(
+        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "refresh"},
+        timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    )
+    db_user.refresh_token = new_refresh_token
+    db_user.refresh_token_expire = datetime.utcnow() + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+
+    new_access_token = create_token(
+        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "access"},
+        timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    db.commit()
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer"
+    }
+
+# @router.post("/logout")
