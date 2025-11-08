@@ -7,12 +7,11 @@ from app import schemas, models, email_utils
 from app.database import SessionLocal
 from app.config import settings
 import random
-from fastapi import Header
-
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
+# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -20,12 +19,14 @@ def get_db():
     finally:
         db.close()
 
+# Create JWT token
 def create_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+# ----------------- REGISTER -----------------
 @router.post("/register")
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter_by(email=user.email).first()
@@ -43,24 +44,29 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     return {"msg": "User registered successfully"}
 
+# ----------------- LOGIN -----------------
 @router.post("/login")
 def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter_by(email=user.email).first()
     if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
+
     access_token = create_token(
-        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "access"},
+        {"sub": db_user.email, "uid": db_user.id, "type": "access"},
         timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     refresh_token = create_token(
-        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "refresh"},
+        {"sub": db_user.email, "uid": db_user.id, "type": "refresh"},
         timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
     )
+
     db_user.refresh_token = refresh_token
     db_user.refresh_token_expire = datetime.utcnow() + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
     db.commit()
+
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
+# ----------------- RESET PASSWORD (SEND OTP) -----------------
 @router.post("/reset-password")
 def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter_by(email=request.email).first()
@@ -73,22 +79,27 @@ def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(
     email_utils.send_email_otp(request.email, otp)
     return {"msg": "OTP sent to email"}
 
+# ----------------- RESET PASSWORD (OTP CONFIRM) -----------------
 @router.post("/reset-password/otp-confirm")
 def reset_confirm(data: schemas.ResetPasswordConfirm, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter_by(otp_code=data.otp).first()
     if not db_user or datetime.utcnow() > db_user.otp_expiration:
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-    reset_token = create_token({"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "reset"}, timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES))
+
+    reset_token = create_token(
+        {"sub": db_user.email, "uid": db_user.id, "type": "reset"},
+        timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
+    )
+
     db_user.otp_code = None
     db_user.otp_expiration = None
     db.commit()
+
     return {"reset_token": reset_token, "token_type": "bearer", "msg": "OTP verified successfully"}
 
+# ----------------- CHANGE PASSWORD -----------------
 @router.post("/reset-password/change-password")
-def change_password(data: schemas.ChangePasswordRequest,db: Session = Depends(get_db)): #, authorization: str = Header(...)
-    # if not authorization.startswith("Bearer "):
-    #     raise HTTPException(status_code=401, detail="Invalid token format")
-    # token = authorization.split(" ")[1]
+def change_password(data: schemas.ChangePasswordRequest, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(data.reset_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if payload.get("type") != "reset":
@@ -106,6 +117,7 @@ def change_password(data: schemas.ChangePasswordRequest,db: Session = Depends(ge
 
     return {"msg": "Password changed successfully"}
 
+# ----------------- REFRESH TOKEN -----------------
 @router.post("/refresh-token")
 def refresh_token(refresh_token: str = Body(...), db: Session = Depends(get_db)):
     try:
@@ -123,21 +135,20 @@ def refresh_token(refresh_token: str = Body(...), db: Session = Depends(get_db))
         raise HTTPException(status_code=403, detail="Refresh token expired")
 
     new_refresh_token = create_token(
-        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "refresh"},
+        {"sub": db_user.email, "uid": db_user.id, "type": "refresh"},
         timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
     )
-    db_user.refresh_token = new_refresh_token
-    db_user.refresh_token_expire = datetime.utcnow() + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
-
     new_access_token = create_token(
-        {"sub": db_user.email, "uid": db_user.id, "role": db_user.role, "type": "access"},
+        {"sub": db_user.email, "uid": db_user.id, "type": "access"},
         timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
+
+    db_user.refresh_token = new_refresh_token
+    db_user.refresh_token_expire = datetime.utcnow() + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
     db.commit()
+
     return {
         "access_token": new_access_token,
         "refresh_token": new_refresh_token,
         "token_type": "bearer"
     }
-
-# @router.post("/logout")

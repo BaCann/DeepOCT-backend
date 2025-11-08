@@ -6,7 +6,6 @@ class UserCreate(BaseModel):
     password: str
     mobile_number: str
     date_of_birth: str
-    role: str 
     
 
 class UserLogin(BaseModel):

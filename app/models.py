@@ -13,6 +13,5 @@ class User(Base):
     full_name = Column(String, nullable=True)  
     mobile_number = Column(String, nullable=True)  
     date_of_birth = Column(String, nullable=True)
-    role = Column(String, nullable=True)
     refresh_token = Column(Text, nullable=True)
     refresh_token_expire = Column(DateTime, nullable=True)
