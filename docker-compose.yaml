@@ -1,17 +1,27 @@
 services:
   db:
-    image: postgres
+    image: postgres:15-alpine
+    container_name: deepoct_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata  
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - deepoct_network
 
   web:
     build: .
+    container_name: deepoct_api
     command: ["./wait-for-it.sh", "db:5432", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - .:/app
@@ -20,8 +30,15 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - deepoct_network
 
 volumes:
   postgres_data:
+    driver: local
 
+networks:
+  deepoct_network:
+    driver: bridge
