@@ -149,7 +149,6 @@ cython_debug/
 # ============================================================
 
 # Model files (LARGE - don't commit)
-*.pth
 *.pt
 *.ckpt
 *.h5
