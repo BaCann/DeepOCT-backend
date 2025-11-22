@@ -1,6 +1,6 @@
 # app/schemas.py
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, Literal
 from datetime import datetime
 
 # ========== AUTH SCHEMAS ==========
@@ -53,3 +53,45 @@ class ChangePasswordInAppRequest(BaseModel):
 
 class DeleteAccountRequest(BaseModel):
     password: str
+
+
+# ========== PREDICTION SCHEMAS ==========
+
+DiseaseType = Literal['CNV', 'DME', 'DRUSEN', 'NORMAL']
+
+class Probabilities(BaseModel):
+    CNV: float = Field(..., ge=0.0, le=1.0)
+    DME: float = Field(..., ge=0.0, le=1.0)
+    DRUSEN: float = Field(..., ge=0.0, le=1.0)
+    NORMAL: float = Field(..., ge=0.0, le=1.0)
+
+class PredictionResponse(BaseModel):
+    id: str
+    user_id: int
+    predicted_class: DiseaseType
+    confidence: float
+    probabilities: Probabilities
+    image_url: str
+    inference_time: int  # milliseconds
+    created_at: datetime
+    heatmap_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class PredictionHistoryItem(BaseModel):
+    id: str
+    user_id: int
+    predicted_class: DiseaseType
+    confidence: float
+    thumbnail_url: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PredictionHistoryResponse(BaseModel):
+    items: list[PredictionHistoryItem]
+    total: int
+    page: int
+    page_size: int
