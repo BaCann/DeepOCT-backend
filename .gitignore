@@ -406,9 +406,9 @@ yarn.lock
 # ============================================================
 
 # Keep model directory structure but ignore models
-models/*
-!models/.gitkeep
-!models/README.md
+# models/*
+# !models/.gitkeep
+# !models/README.mdgit
 
 # Keep uploads directory structure
 uploads/*/
