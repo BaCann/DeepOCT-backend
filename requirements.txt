@@ -1,5 +1,3 @@
-# requirements.txt
-
 # Existing dependencies
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
@@ -13,11 +11,14 @@ python-multipart==0.0.6
 aiofiles==23.2.1
 
 # ML dependencies
+numpy==1.24.3
 torch==2.1.0
 torchvision==0.16.0
 pillow==10.1.0
-numpy==1.24.3
 timm==0.9.12
 
+# Grad-CAM dependencies
+opencv-python-headless==4.8.1.78
+
+# Optional: pytorch-grad-cam library (nếu muốn dùng thư viện có sẵn)
 # pytorch-grad-cam==1.4.8
-# opencv-python-headless==4.8.1.78

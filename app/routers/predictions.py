@@ -1,8 +1,11 @@
 # app/routers/predictions.py
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
-from sqlalchemy.orm import Session
+import logging 
 import uuid
 import os
+
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
+from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.database import SessionLocal
 from app.models import User, Prediction
@@ -14,6 +17,14 @@ from app.schemas import (
 from app.user import get_current_user
 from app.utils.file_handler import file_handler
 from app.services.ml_service import ml_service
+
+# Base URL cho tính nhất quán
+BASE_URL = "http://192.168.1.59:8000"
+
+# Khởi tạo Logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO) 
+
 
 router = APIRouter(prefix="/predictions", tags=["Predictions"])
 
@@ -33,15 +44,13 @@ async def create_prediction(
     current_user: User = Depends(get_current_user)
 ):
     """
-    MATCH frontend: predictionApi.predict(imageUri)
-    
-    Upload OCT image and run ML prediction
-    Returns: PredictionResult
+    Upload OCT image, run ML prediction, and generate Grad-CAM visualization.
     """
-    print(f"Received prediction request from user {current_user.id}")
+    logger.info(f"Received prediction request from user {current_user.id} for file {image.filename}")
     
     # 1. Validate image
     if not file_handler.validate_image(image):
+        logger.error(f"Validation failed for user {current_user.id}. File: {image.filename}")
         raise HTTPException(
             status_code=400, 
             detail="Invalid image file. Only JPG, JPEG, PNG allowed (max 10MB)"
@@ -50,33 +59,49 @@ async def create_prediction(
     # 2. Save image
     try:
         image_path, image_url = await file_handler.save_image(image, current_user.id)
-        print(f"Image saved: {image_path}")
+        logger.info(f"Image saved successfully: {image_path}")
     except HTTPException as e:
+        logger.error(f"HTTPException while saving image for user {current_user.id}: {e.detail}")
         raise e
     except Exception as e:
+        logger.exception(f"Unexpected error while saving image for user {current_user.id}")
         raise HTTPException(status_code=500, detail=f"Failed to save image: {str(e)}")
     
     # 3. Run ML prediction
     try:
         prediction_result = ml_service.predict(image_path)
-        print(f"Prediction: {prediction_result['predicted_class']}")
+        logger.info(f"ML Prediction completed: {prediction_result['predicted_class']} (Conf: {prediction_result['confidence']:.2f})")
     except Exception as e:
         # Clean up uploaded image if prediction fails
         file_handler.delete_image(image_path)
+        logger.exception(f"ML Prediction failed for image: {image_path}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
     
     # 4. Generate Grad-CAM heatmap
     heatmap_url = None
     try:
+        # 4a. Tạo đường dẫn cho heatmap
         heatmap_path = image_path.replace('/images/', '/heatmaps/').replace(
             f'.{image_path.split(".")[-1]}', '_heatmap.jpg'
         )
         os.makedirs(os.path.dirname(heatmap_path), exist_ok=True)
-        heatmap_result = ml_service.generate_gradcam(image_path, heatmap_path)
-        if heatmap_result:
-            heatmap_url = f"http://192.168.1.102:8000/{heatmap_path}"
+        
+        # 4b. Tạo Grad-CAM visualization
+        logger.info(f"Generating Grad-CAM heatmap: {heatmap_path}")
+        heatmap_success = ml_service.generate_gradcam(image_path, heatmap_path)
+        
+        if heatmap_success and os.path.exists(heatmap_path):
+            # SỬ DỤNG BIẾN BASE_URL ĐÃ ĐỊNH NGHĨA Ở ĐẦU FILE
+            heatmap_url = f"{BASE_URL}/{heatmap_path}"
+            logger.info(f"Heatmap generated successfully: {heatmap_url}")
+        else:
+            logger.warning(f"Heatmap generation failed or file not created: {heatmap_path}")
+            
     except Exception as e:
-        print(f"Heatmap generation failed: {e}")
+        logger.exception(f"Unexpected error during Heatmap generation for {image_path}: {e}")
+
     
     # 5. Save to database
     prediction = Prediction(
@@ -88,6 +113,7 @@ async def create_prediction(
         image_path=image_path,
         image_url=image_url,
         heatmap_url=heatmap_url,
+        # analysis_result = (ĐÃ BỎ)
         inference_time=prediction_result['inference_time']
     )
     
@@ -95,7 +121,7 @@ async def create_prediction(
     db.commit()
     db.refresh(prediction)
     
-    print(f"Prediction saved to database: {prediction.id}")
+    logger.info(f"Prediction saved to database: ID {prediction.id} for user {current_user.id}")
     
     return prediction
 
@@ -108,12 +134,9 @@ async def get_prediction_history(
     current_user: User = Depends(get_current_user)
 ):
     """
-    MATCH frontend: predictionApi.getHistory(page, pageSize)
-    
     Get paginated prediction history
-    Returns: { items, total, page, page_size }
     """
-    print(f"History request: page={page}, page_size={page_size}, user={current_user.id}")
+    logger.info(f"History request from user {current_user.id}: page={page}, page_size={page_size}")
     
     # 1. Count total predictions
     total = db.query(Prediction).filter(
@@ -141,7 +164,7 @@ async def get_prediction_history(
         for p in predictions
     ]
     
-    print(f"Returned {len(items)} items (total: {total})")
+    logger.info(f"Returned {len(items)} items for user {current_user.id} (total: {total})")
     
     return PredictionHistoryResponse(
         items=items,
@@ -158,12 +181,9 @@ async def get_prediction_detail(
     current_user: User = Depends(get_current_user)
 ):
     """
-    MATCH frontend: predictionApi.getDetail(predictionId)
-    
     Get full prediction detail
-    Returns: PredictionResult
     """
-    print(f"🔍 Detail request: prediction_id={prediction_id}, user={current_user.id}")
+    logger.info(f"Detail request: prediction_id={prediction_id}, user={current_user.id}")
     
     prediction = db.query(Prediction).filter(
         Prediction.id == prediction_id,
@@ -171,9 +191,10 @@ async def get_prediction_detail(
     ).first()
     
     if not prediction:
+        logger.warning(f"Prediction ID {prediction_id} not found for user {current_user.id}")
         raise HTTPException(status_code=404, detail="Prediction not found")
     
-    print(f"Found prediction: {prediction.predicted_class}")
+    logger.info(f"Found prediction {prediction_id}: Class {prediction.predicted_class}")
     
     return prediction
 
@@ -185,12 +206,9 @@ async def delete_prediction(
     current_user: User = Depends(get_current_user)
 ):
     """
-    MATCH frontend: predictionApi.delete(predictionId)
-    
     Delete prediction
-    Returns: { msg: string }
     """
-    print(f"Delete request: prediction_id={prediction_id}, user={current_user.id}")
+    logger.info(f"Delete request: prediction_id={prediction_id}, user={current_user.id}")
     
     prediction = db.query(Prediction).filter(
         Prediction.id == prediction_id,
@@ -198,19 +216,45 @@ async def delete_prediction(
     ).first()
     
     if not prediction:
+        logger.warning(f"Attempted delete of non-existent prediction {prediction_id} by user {current_user.id}")
         raise HTTPException(status_code=404, detail="Prediction not found")
     
-    # Delete files
+    # Delete image file
     file_handler.delete_image(prediction.image_path)
+    
+    # Delete heatmap file if exists
     if prediction.heatmap_url:
-        heatmap_path = prediction.heatmap_url.replace('http://192.168.1.102:8000/', '')
-        if os.path.exists(heatmap_path):
-            file_handler.delete_image(heatmap_path)
+        try:
+            # Extract local path from URL
+            heatmap_path = prediction.heatmap_url.replace(f"{BASE_URL}/", '')
+            
+            # Handle old data with different IP
+            if heatmap_path == prediction.heatmap_url:
+                heatmap_path = prediction.heatmap_url.replace('http://192.168.1.102:8000/', '')
+            
+            # Fallback: extract path after 'uploads/'
+            if heatmap_path.startswith('http'):
+                logger.warning(f"Failed to extract path from URL: {prediction.heatmap_url}")
+                try:
+                    heatmap_path = heatmap_path.split("uploads/")[1]
+                    heatmap_path = os.path.join("uploads", heatmap_path)
+                except (IndexError, ValueError):
+                    logger.error(f"Could not extract heatmap path from: {prediction.heatmap_url}")
+                    heatmap_path = None
+            
+            if heatmap_path and os.path.exists(heatmap_path):
+                file_handler.delete_image(heatmap_path)
+                logger.info(f"Deleted heatmap file: {heatmap_path}")
+            elif heatmap_path:
+                logger.warning(f"Heatmap file not found on disk: {heatmap_path}")
+                
+        except Exception as e:
+            logger.error(f"Failed to delete heatmap file for prediction {prediction_id}: {e}")
     
     # Delete from database
     db.delete(prediction)
     db.commit()
     
-    print(f"Prediction deleted: {prediction_id}")
+    logger.info(f"Prediction {prediction_id} deleted successfully.")
     
     return {"msg": "Prediction deleted successfully"}

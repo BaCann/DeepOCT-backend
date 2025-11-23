@@ -1,5 +1,8 @@
-# app/user.py
-from fastapi import APIRouter, Depends, HTTPException, Header
+# app/user.py (FULL CODE ĐÃ SỬA ĐỔI)
+
+from fastapi import APIRouter, Depends, HTTPException
+# Thêm import cho HTTPBearer để kích hoạt nút Authorize trong Swagger UI
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials 
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -9,6 +12,9 @@ from app.config import settings
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+# Khởi tạo Security Scheme - Điều này làm nút "Authorize" xuất hiện
+bearer_scheme = HTTPBearer()
 
 # Dependency to get DB session
 def get_db():
@@ -20,19 +26,17 @@ def get_db():
 
 # ========== GET CURRENT USER HELPER ==========
 def get_current_user(
-    authorization: str = Header(...),
+    # Sử dụng Depends(bearer_scheme) để nhận token đã được xử lý (tách "Bearer ")
+    token: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db)
 ) -> models.User:
     """Extract and verify JWT token, return current user"""
     try:
-        # Extract token from header
-        if not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid token format")
-        
-        token = authorization.split(" ")[1]
+        # Lấy chuỗi JWT thuần túy (Access Token)
+        token_value = token.credentials 
         
         # Decode token
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token_value, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
         token_type = payload.get("type")
         
@@ -57,6 +61,8 @@ def get_current_user(
         
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+# ---
 
 # ========== GET PROFILE ==========
 @router.get("/profile", response_model=schemas.UserProfile)

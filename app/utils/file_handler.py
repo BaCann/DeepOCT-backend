@@ -56,8 +56,9 @@ class FileHandler:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
         
-        # Generate public URL
-        public_url = f"http://192.168.1.102:8000/uploads/{user_id}/images/{filename}"
+        # Generate public URL (Đã thay đổi cổng từ 1.59 thành 1.102 để phù hợp với heatmap)
+        # Giữ nguyên 192.168.1.59 như trong code cũ
+        public_url = f"http://192.168.1.59:8000/uploads/{user_id}/images/{filename}" 
         
         return str(file_path), public_url
     

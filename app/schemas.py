@@ -1,6 +1,6 @@
 # app/schemas.py
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict, List
 from datetime import datetime
 
 # ========== AUTH SCHEMAS ==========
@@ -65,6 +65,21 @@ class Probabilities(BaseModel):
     DRUSEN: float = Field(..., ge=0.0, le=1.0)
     NORMAL: float = Field(..., ge=0.0, le=1.0)
 
+# --- NEW SCHEMA FOR GRAD-CAM ANALYSIS ---
+class GradCAMAnalysis(BaseModel):
+    """Schema chứa các chỉ số định lượng từ Grad-CAM"""
+    analysis_status: Literal['SUCCESS', 'FAILED', 'ERROR']
+    image_size_pixels: Optional[str] = Field(None, description="Kích thước ảnh gốc (Width x Height)")
+    total_pixels: int = Field(..., ge=0)
+    threshold: float = Field(..., ge=0.0, le=1.0, description="Ngưỡng chuẩn hóa CAM được sử dụng để tính Hot Area")
+    hot_area_pixels: int = Field(..., ge=0, description="Tổng số pixel thuộc vùng 'nóng' (lớn hơn ngưỡng)")
+    hot_area_ratio: float = Field(..., ge=0.0, le=1.0, description="Tỷ lệ diện tích vùng nóng (0.0 đến 1.0)")
+    hot_area_percent: float = Field(..., ge=0.0, le=100.0, description="Phần trăm diện tích vùng nóng (0.0% đến 100.0%)")
+    bb_width_pixels: int = Field(..., ge=0, description="Độ rộng (pixel) của Bounding Box bao quanh Hot Area")
+    bb_height_pixels: int = Field(..., ge=0, description="Chiều cao (pixel) của Bounding Box bao quanh Hot Area")
+    error_detail: Optional[str] = Field(None, description="Thông báo lỗi nếu phân tích thất bại")
+# ------------------------------------------
+
 class PredictionResponse(BaseModel):
     id: str
     user_id: int
@@ -72,9 +87,10 @@ class PredictionResponse(BaseModel):
     confidence: float
     probabilities: Probabilities
     image_url: str
+    heatmap_url: Optional[str] = None
+    analysis_result: Optional[GradCAMAnalysis] = None # <-- ĐÃ BỔ SUNG
     inference_time: int  # milliseconds
     created_at: datetime
-    heatmap_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -91,7 +107,7 @@ class PredictionHistoryItem(BaseModel):
         from_attributes = True
 
 class PredictionHistoryResponse(BaseModel):
-    items: list[PredictionHistoryItem]
+    items: List[PredictionHistoryItem]
     total: int
     page: int
     page_size: int
