@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, Float, 
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 class User(Base):
@@ -23,6 +24,7 @@ class User(Base):
     full_name = Column(String, nullable=True)
     mobile_number = Column(String, nullable=True)
     date_of_birth = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     
     # JWT Refresh Token
     refresh_token = Column(Text, nullable=True)
@@ -63,7 +65,7 @@ class Prediction(Base):
     
     # Metadata
     inference_time = Column(Integer, nullable=False)  # Milliseconds
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationship

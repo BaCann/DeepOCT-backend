@@ -1,6 +1,6 @@
 # app/user.py (FULL CODE ĐÃ SỬA ĐỔI)
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 # Thêm import cho HTTPBearer để kích hoạt nút Authorize trong Swagger UI
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials 
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from passlib.context import CryptContext
 from app import schemas, models
 from app.database import SessionLocal
 from app.config import settings
+from app.utils.file_handler import file_handler
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -131,3 +132,42 @@ def delete_account(
     db.commit()
     
     return {"msg": "Account deleted successfully"}
+
+# ========== UPLOAD AVATAR ========== (THÊM MỚI)
+@router.put("/avatar", response_model=schemas.UserProfile)
+async def upload_avatar(
+    avatar: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload user avatar"""
+    
+    # Validate image
+    if not file_handler.validate_image(avatar):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image file. Only JPG, JPEG, PNG allowed (max 10MB)"
+        )
+    
+    try:
+        # Save avatar (will delete old one if exists)
+        avatar_path, avatar_url = await file_handler.save_avatar(
+            avatar, 
+            current_user.id,
+            current_user.avatar_url
+        )
+        
+        # Update user profile
+        current_user.avatar_url = avatar_url
+        db.commit()
+        db.refresh(current_user)
+        
+        return current_user
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload avatar: {str(e)}"
+        )

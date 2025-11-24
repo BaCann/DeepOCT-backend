@@ -51,7 +51,7 @@ class HybridCNNTransformer(nn.Module):
         self.feature_map_size = 7     # For 224x224 input
         self.num_patches = (self.feature_map_size // patch_size) ** 2  # 7*7=49
         
-        print(f"📦 Backbone: EfficientNet-B3")
+        print(f"Backbone: EfficientNet-B3")
         print(f"   Output channels: {self.feature_channels}")
         print(f"   Feature map size: {self.feature_map_size}x{self.feature_map_size}")
         print(f"   Num patches: {self.num_patches}")
@@ -104,7 +104,7 @@ class HybridCNNTransformer(nn.Module):
             num_layers=num_layers
         )
         
-        print(f"🔧 Transformer: {num_layers} layers, {num_heads} heads")
+        print(f"Transformer: {num_layers} layers, {num_heads} heads")
         print(f"   Feature dim: {feature_dim}")
         print(f"   MLP ratio: {MLP_RATIO}")
         
@@ -119,7 +119,7 @@ class HybridCNNTransformer(nn.Module):
             nn.Linear(feature_dim // 2, num_classes)
         )
         
-        print(f"✅ Model initialized: {num_classes} classes")
+        print(f"Model initialized: {num_classes} classes")
     
     def forward(self, x):
         """
@@ -206,6 +206,6 @@ if __name__ == '__main__':
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     
-    print(f"\n📊 Model parameters:")
+    print(f"\nModel parameters:")
     print(f"   Total: {total_params:,}")
     print(f"   Trainable: {trainable_params:,}")

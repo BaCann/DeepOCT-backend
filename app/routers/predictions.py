@@ -1,11 +1,10 @@
 # app/routers/predictions.py
 import logging 
 import uuid
-import os
-
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
+import os
 
 from app.database import SessionLocal
 from app.models import User, Prediction
@@ -18,8 +17,6 @@ from app.user import get_current_user
 from app.utils.file_handler import file_handler
 from app.services.ml_service import ml_service
 
-# Base URL cho tính nhất quán
-BASE_URL = "http://192.168.1.59:8000"
 
 # Khởi tạo Logger
 logger = logging.getLogger(__name__)
@@ -82,19 +79,15 @@ async def create_prediction(
     # 4. Generate Grad-CAM heatmap
     heatmap_url = None
     try:
-        # 4a. Tạo đường dẫn cho heatmap
-        heatmap_path = image_path.replace('/images/', '/heatmaps/').replace(
-            f'.{image_path.split(".")[-1]}', '_heatmap.jpg'
-        )
-        os.makedirs(os.path.dirname(heatmap_path), exist_ok=True)
+        # 4a. Lấy đường dẫn heatmap từ file_handler
+        heatmap_path, heatmap_url_temp = file_handler.get_heatmap_path(image_path)
         
         # 4b. Tạo Grad-CAM visualization
         logger.info(f"Generating Grad-CAM heatmap: {heatmap_path}")
         heatmap_success = ml_service.generate_gradcam(image_path, heatmap_path)
         
         if heatmap_success and os.path.exists(heatmap_path):
-            # SỬ DỤNG BIẾN BASE_URL ĐÃ ĐỊNH NGHĨA Ở ĐẦU FILE
-            heatmap_url = f"{BASE_URL}/{heatmap_path}"
+            heatmap_url = heatmap_url_temp
             logger.info(f"Heatmap generated successfully: {heatmap_url}")
         else:
             logger.warning(f"Heatmap generation failed or file not created: {heatmap_path}")
@@ -224,32 +217,11 @@ async def delete_prediction(
     
     # Delete heatmap file if exists
     if prediction.heatmap_url:
-        try:
-            # Extract local path from URL
-            heatmap_path = prediction.heatmap_url.replace(f"{BASE_URL}/", '')
-            
-            # Handle old data with different IP
-            if heatmap_path == prediction.heatmap_url:
-                heatmap_path = prediction.heatmap_url.replace('http://192.168.1.102:8000/', '')
-            
-            # Fallback: extract path after 'uploads/'
-            if heatmap_path.startswith('http'):
-                logger.warning(f"Failed to extract path from URL: {prediction.heatmap_url}")
-                try:
-                    heatmap_path = heatmap_path.split("uploads/")[1]
-                    heatmap_path = os.path.join("uploads", heatmap_path)
-                except (IndexError, ValueError):
-                    logger.error(f"Could not extract heatmap path from: {prediction.heatmap_url}")
-                    heatmap_path = None
-            
-            if heatmap_path and os.path.exists(heatmap_path):
-                file_handler.delete_image(heatmap_path)
-                logger.info(f"Deleted heatmap file: {heatmap_path}")
-            elif heatmap_path:
-                logger.warning(f"Heatmap file not found on disk: {heatmap_path}")
-                
-        except Exception as e:
-            logger.error(f"Failed to delete heatmap file for prediction {prediction_id}: {e}")
+        success = file_handler.delete_heatmap(prediction.heatmap_url)
+        if success:
+            logger.info(f"Deleted heatmap file for prediction {prediction_id}")
+        else:
+            logger.warning(f"Failed to delete heatmap for prediction {prediction_id}")
     
     # Delete from database
     db.delete(prediction)

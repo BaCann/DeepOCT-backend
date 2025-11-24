@@ -16,5 +16,7 @@ class Settings:
     EMAIL_FROM = os.getenv("EMAIL_FROM")
     EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME")
 
+    BASE_URL = os.getenv("BASE_URL", "http://192.168.1.102:8000")
+
 settings = Settings()
 

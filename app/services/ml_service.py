@@ -21,7 +21,7 @@ class MLService:
         """Initialize ML service with trained Hybrid CNN-Transformer model"""
         
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print(f"🖥️ Using device: {self.device}")
+        print(f"Using device: {self.device}")
         
         # Class names - EXACT order from training
         self.class_names = ['CNV', 'DME', 'DRUSEN', 'NORMAL']
@@ -47,7 +47,7 @@ class MLService:
         # Register hooks for Grad-CAM
         self._register_hooks()
         
-        print("✅ ML Service initialized successfully")
+        print("ML Service initialized successfully")
     
     def _load_model(self):
         """Load trained model from weights file"""
@@ -55,7 +55,7 @@ class MLService:
         weights_path = 'models/best_weights_f1.pth'
         
         if not os.path.exists(weights_path):
-            print(f"⚠️ Weights not found at {weights_path}. Initializing model without loading weights.")
+            print(f"Weights not found at {weights_path}. Initializing model without loading weights.")
             model = HybridCNNTransformer(
                 num_classes=4,
                 feature_dim=512,
@@ -67,7 +67,7 @@ class MLService:
             return model
         
         try:
-            print(f"📦 Loading weights from {weights_path}...")
+            print(f"Loading weights from {weights_path}...")
             
             model = HybridCNNTransformer(
                 num_classes=4,
@@ -89,12 +89,12 @@ class MLService:
                 model.load_state_dict(state_dict)
             
             model = model.to(self.device)
-            print("✅ Weights loaded successfully")
+            print("Weights loaded successfully")
             
             return model
             
         except Exception as e:
-            print(f"❌ Error loading weights: {e}")
+            print(f"Error loading weights: {e}")
             raise
     
     def _register_hooks(self):
@@ -117,11 +117,11 @@ class MLService:
             if target_layer:
                 target_layer.register_forward_hook(forward_hook)
                 target_layer.register_full_backward_hook(backward_hook) 
-                print(f"✅ Grad-CAM hooks registered on: {target_layer.__class__.__name__} (EfficientNet-B3 features[-1])")
+                print(f"Grad-CAM hooks registered on: {target_layer.__class__.__name__} (EfficientNet-B3 features[-1])")
             else:
-                print("⚠️ Target layer not found for Grad-CAM on EfficientNet-B3.")
+                print("Target layer not found for Grad-CAM on EfficientNet-B3.")
         else:
-            print("⚠️ Model structure missing 'backbone' or 'features' for Grad-CAM registration.")
+            print("Model structure missing 'backbone' or 'features' for Grad-CAM registration.")
     
     def predict(self, image_path: str) -> Dict:
         """Run inference on OCT image"""
@@ -150,7 +150,7 @@ class MLService:
             # Calculate inference time
             inference_time = int((time.time() - start_time) * 1000)
             
-            print(f"✅ Prediction: {predicted_class} ({confidence:.2%}) - {inference_time}ms")
+            print(f"Prediction: {predicted_class} ({confidence:.2%}) - {inference_time}ms")
             
             return {
                 'predicted_class': predicted_class,
@@ -160,14 +160,14 @@ class MLService:
             }
             
         except Exception as e:
-            print(f"❌ Prediction error: {e}")
+            print(f"Prediction error: {e}")
             traceback.print_exc() 
             raise
     
     def generate_gradcam(self, image_path: str, output_path: str) -> bool:
         """Generate Grad-CAM heatmap visualization"""
         try:
-            print(f"🔥 Generating Grad-CAM for {image_path}")
+            print(f"Generating Grad-CAM for {image_path}")
             
             # Load and preprocess image
             image = Image.open(image_path).convert('RGB')
@@ -195,7 +195,7 @@ class MLService:
             
             # Check if hooks captured data
             if self.gradients is None or self.activations is None:
-                print("⚠️ Grad-CAM hooks didn't capture data. Using simple CAM instead.")
+                print("Grad-CAM hooks didn't capture data. Using simple CAM instead.")
                 return self._generate_simple_cam(image_path, output_path)
             
             # Compute Grad-CAM
@@ -221,11 +221,11 @@ class MLService:
             result_bgr = cv2.cvtColor(superimposed, cv2.COLOR_RGB2BGR)
             cv2.imwrite(output_path, result_bgr)
             
-            print(f"✅ Grad-CAM saved to {output_path}")
+            print(f"Grad-CAM saved to {output_path}")
             return True
             
         except Exception as e:
-            print(f"❌ Grad-CAM generation failed: {e}")
+            print(f"Grad-CAM generation failed: {e}")
             traceback.print_exc()
             return False
 
@@ -234,7 +234,7 @@ class MLService:
         Fallback: Generate simple attention visualization
         """
         try:
-            print("📊 Generating simple attention map...")
+            print("Generating simple attention map...")
             
             # Load image
             image = Image.open(image_path).convert('RGB')
@@ -266,11 +266,11 @@ class MLService:
             result_bgr = cv2.cvtColor(superimposed, cv2.COLOR_RGB2BGR)
             cv2.imwrite(output_path, result_bgr)
             
-            print(f"✅ Simple CAM saved to {output_path}")
+            print(f"Simple CAM saved to {output_path}")
             return True
             
         except Exception as e:
-            print(f"❌ Simple CAM failed: {e}")
+            print(f"Simple CAM failed: {e}")
             return False
 
 # Singleton instance

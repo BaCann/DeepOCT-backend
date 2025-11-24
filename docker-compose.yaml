@@ -37,13 +37,12 @@ services:
         condition: service_healthy
     networks:
       - deepoct_network
-    # Optional: Add memory limit if needed
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 4G
-    #     reservations:
-    #       memory: 2G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
 volumes:
   postgres_data:

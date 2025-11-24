@@ -34,6 +34,7 @@ class UserProfile(BaseModel):
     full_name: Optional[str]
     mobile_number: Optional[str]
     date_of_birth: Optional[str]
+    avatar_url: Optional[str] = None
     is_active: bool
     is_verified: bool
     created_at: datetime

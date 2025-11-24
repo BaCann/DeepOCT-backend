@@ -1,4 +1,3 @@
-
 # STAGE 1: Builder
 FROM python:3.11-slim AS builder
 
@@ -21,6 +20,9 @@ RUN pip install --user --no-cache-dir \
 # Clean up pip cache
 RUN rm -rf /root/.cache/pip
 
+# ============================================
+# STAGE 2: Runtime
+# ============================================
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -30,27 +32,32 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     netcat-openbsd \
     libgomp1 \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
 # Copy Python packages from builder
 COPY --from=builder /root/.local /root/.local
 
-# Set PATH
+# Set PATH and environment variables
 ENV PATH=/root/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Copy application files
+# Copy wait-for-it script
 COPY wait-for-it.sh /app/
 RUN chmod +x /app/wait-for-it.sh
 
+# Copy application files
 COPY app/ /app/app/
 COPY models/ /app/models/
-COPY .env /app/.env
 
-# Create uploads directory
-RUN mkdir -p /app/uploads
+# THAY ĐỔI - KHÔNG copy .env vào image (sẽ dùng env_file từ docker-compose)
+# COPY .env /app/.env  # XÓA dòng này
+
+# Create directories for uploads
+RUN mkdir -p /app/uploads && \
+    chmod 755 /app/uploads
 
 # Clean up unnecessary files to reduce image size
 RUN find /root/.local \( -type f -name '*.pyc' -o -name '*.pyo' \) -delete \
@@ -63,9 +70,9 @@ RUN find /root/.local \( -type f -name '*.pyc' -o -name '*.pyo' \) -delete \
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/')" || exit 1
+# Health check - Cải tiến để kiểm tra cả DB connection
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
 
 # Run application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
