@@ -13,8 +13,9 @@ from app.database import engine
 max_tries = 10
 for i in range(max_tries):
     try:
-        models.Base.metadata.create_all(bind=engine)
-        print("Database connected successfully and tables created")
+        # checkfirst=True: Only create tables if they don't exist
+        models.Base.metadata.create_all(bind=engine, checkfirst=True)
+        print("Database connected successfully and tables verified")
         break
     except OperationalError as e:
         print(f"Database connection failed ({i+1}/{max_tries}), retrying in 2s...")
@@ -30,12 +31,10 @@ app = FastAPI(
 )
 
 # ========== CORS MIDDLEWARE ==========
-# Read allowed origins from environment
 allowed_origins = os.getenv("CORS_ORIGINS", "").strip('[]').replace('"', '').split(',')
 if not allowed_origins or allowed_origins == ['']:
-    # Fallback for development
     allowed_origins = ["*"]
-    print("CORS: Allowing all origins (development mode)")
+    print("⚠️  CORS: Allowing all origins (development mode)")
 else:
     print(f"CORS enabled for: {allowed_origins}")
 
@@ -47,11 +46,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ========== STATIC FILES (OPTIONAL) ==========
-# Uncomment nếu cần serve static files từ disk
-# os.makedirs("uploads", exist_ok=True)
-# app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
 # ========== REGISTER ROUTERS ==========
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(user.router, tags=["User Profile"])
@@ -60,6 +54,7 @@ app.include_router(predictions.router, tags=["Predictions"])
 # ========== ROOT ENDPOINT ==========
 @app.get("/")
 def root():
+    """API root endpoint with system information"""
     return {
         "message": "DeepOCT API is running",
         "version": "2.0.0",
@@ -83,6 +78,6 @@ def root():
 def health_check():
     return {
         "status": "healthy",
-        "database": "connected",
-        "storage": "s3"
+        "service": "deepoct-api",
+        "version": "2.0.0"
     }
