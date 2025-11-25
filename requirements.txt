@@ -1,24 +1,36 @@
-# Existing dependencies
+# requirements.txt
+
+# ========== WEB FRAMEWORK ==========
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-python-dotenv==1.0.0
-sqlalchemy==2.0.25
-psycopg2-binary==2.9.9
-pydantic[email]==2.5.3
-passlib[argon2]==1.7.4
-python-jose[cryptography]==3.3.0
 python-multipart==0.0.6
 aiofiles==23.2.1
 
-# ML dependencies
+# ========== CONFIGURATION ==========
+python-dotenv==1.0.0
+pydantic[email]==2.5.3
+
+# ========== DATABASE ==========
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# ========== AUTHENTICATION ==========
+passlib[argon2]==1.7.4
+python-jose[cryptography]==3.3.0
+
+# ========== AWS INTEGRATION (NEW!) ==========
+boto3==1.34.18
+botocore==1.34.18
+
+# ========== MACHINE LEARNING ==========
 numpy==1.24.3
 torch==2.1.0
 torchvision==0.16.0
 pillow==10.1.0
 timm==0.9.12
 
-# Grad-CAM dependencies
+# ========== COMPUTER VISION ==========
 opencv-python-headless==4.8.1.78
 
-# Optional: pytorch-grad-cam library (nếu muốn dùng thư viện có sẵn)
+# ========== OPTIONAL ==========
 # pytorch-grad-cam==1.4.8
