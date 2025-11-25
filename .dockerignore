@@ -1,6 +1,14 @@
 # .dockerignore
 
-# Python
+# ========== ENVIRONMENT FILES (CRITICAL!) ==========
+.env
+.env.*
+.env.production
+.env.staging
+.env.local
+.env.development
+
+# ========== PYTHON ==========
 __pycache__/
 *.py[cod]
 *$py.class
@@ -24,45 +32,90 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+pip-log.txt
+pip-delete-this-directory.txt
 
-# IDEs
+# ========== IDEs ==========
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+.settings/
 
-# OS
+# ========== OS ==========
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Git
+# ========== GIT ==========
 .git/
 .gitignore
+.gitattributes
+.github/
 
-# Logs
+# ========== LOGS ==========
 *.log
+logs/
 
-# Database
+# ========== DATABASE ==========
 *.db
 *.sqlite3
+*.sql
 
-# Uploads (don't copy to image, use volume)
+# ========== UPLOADS (use volume instead) ==========
 uploads/
 
-# Notebooks
+# ========== NOTEBOOKS ==========
 *.ipynb
 .ipynb_checkpoints/
 
-# Documentation
+# ========== DOCUMENTATION ==========
 README.md
 docs/
+*.md
 
-# Tests
+# ========== TESTS ==========
 tests/
 test_*.py
+*_test.py
+pytest_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
 
-# Docker
+# ========== DOCKER FILES ==========
 docker-compose*.yml
-Dockerfile
+docker-compose.yaml
+docker-compose.yml
+Dockerfile*
 .dockerignore
+
+# ========== TERRAFORM (if in project) ==========
+*.tfstate
+*.tfstate.backup
+.terraform/
+terraform.tfvars
+*.tfvars
+
+# ========== AWS ==========
+.aws/
+
+# ========== TEMPORARY FILES ==========
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# ========== ML MODELS (Optional - uncomment if needed) ==========
+# models/*.pth  # Uncomment to exclude model weights
+# models/*.pt
+# models/*.h5
+
+# ========== NODE MODULES (if any) ==========
+node_modules/
+npm-debug.log
+yarn-error.log

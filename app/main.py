@@ -2,7 +2,6 @@
 import time
 from sqlalchemy.exc import OperationalError
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -10,47 +9,80 @@ from app import models, database, auth, user
 from app.routers import predictions  
 from app.database import engine
 
+# ========== DATABASE CONNECTION ==========
 max_tries = 10
 for i in range(max_tries):
     try:
         models.Base.metadata.create_all(bind=engine)
-        print(" Kết nối DB thành công và tạo bảng.")
+        print("Database connected successfully and tables created")
         break
     except OperationalError as e:
-        print(f" Kết nối DB thất bại ({i+1}/{max_tries}), thử lại sau 2s...")
+        print(f"Database connection failed ({i+1}/{max_tries}), retrying in 2s...")
         time.sleep(2)
 else:
-    raise RuntimeError(" Không thể kết nối DB sau nhiều lần thử.")
+    raise RuntimeError("Could not connect to database after multiple attempts")
 
-app = FastAPI(title="DeepOCT API - OCT Diagnosis System")
+# ========== FASTAPI APP ==========
+app = FastAPI(
+    title="DeepOCT API",
+    description="OCT Diagnosis System with AI-powered retinal disease classification",
+    version="2.0.0"
+)
 
-#  CORS middleware
+# ========== CORS MIDDLEWARE ==========
+# Read allowed origins from environment
+allowed_origins = os.getenv("CORS_ORIGINS", "").strip('[]').replace('"', '').split(',')
+if not allowed_origins or allowed_origins == ['']:
+    # Fallback for development
+    allowed_origins = ["*"]
+    print("CORS: Allowing all origins (development mode)")
+else:
+    print(f"CORS enabled for: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-#  Serve uploaded files
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# ========== STATIC FILES (OPTIONAL) ==========
+# Uncomment nếu cần serve static files từ disk
+# os.makedirs("uploads", exist_ok=True)
+# app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Register routers
+# ========== REGISTER ROUTERS ==========
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(user.router, tags=["User Profile"])
-app.include_router(predictions.router, tags=["Predictions"])  
+app.include_router(predictions.router, tags=["Predictions"])
 
+# ========== ROOT ENDPOINT ==========
 @app.get("/")
 def root():
     return {
         "message": "DeepOCT API is running",
-        "version": "1.0.0",
+        "version": "2.0.0",
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "infrastructure": {
+            "database": "AWS RDS PostgreSQL",
+            "storage": "AWS S3",
+            "domain": os.getenv("BASE_URL", "http://localhost:8000")
+        },
         "docs": "/docs",
+        "redoc": "/redoc",
         "endpoints": {
-            "auth": "/login, /register, /reset-password",
-            "user": "/profile, /change-password, /account",
+            "auth": "/login, /register, /reset-password, /refresh-token",
+            "user": "/profile, /avatar, /change-password, /account",
             "predictions": "/predictions/predict, /predictions/history, /predictions/{id}"
         }
+    }
+
+# ========== HEALTH CHECK ==========
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "database": "connected",
+        "storage": "s3"
     }

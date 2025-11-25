@@ -1,7 +1,5 @@
-# app/user.py (FULL CODE ĐÃ SỬA ĐỔI)
-
+# app/user.py
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
-# Thêm import cho HTTPBearer để kích hoạt nút Authorize trong Swagger UI
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials 
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
@@ -9,12 +7,10 @@ from passlib.context import CryptContext
 from app import schemas, models
 from app.database import SessionLocal
 from app.config import settings
-from app.utils.file_handler import file_handler
+from app.services.s3_service import s3_service  # ← THAY ĐỔI: Import S3 thay vì file_handler
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-
-# Khởi tạo Security Scheme - Điều này làm nút "Authorize" xuất hiện
 bearer_scheme = HTTPBearer()
 
 # Dependency to get DB session
@@ -27,34 +23,27 @@ def get_db():
 
 # ========== GET CURRENT USER HELPER ==========
 def get_current_user(
-    # Sử dụng Depends(bearer_scheme) để nhận token đã được xử lý (tách "Bearer ")
     token: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db)
 ) -> models.User:
     """Extract and verify JWT token, return current user"""
     try:
-        # Lấy chuỗi JWT thuần túy (Access Token)
         token_value = token.credentials 
-        
-        # Decode token
         payload = jwt.decode(token_value, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
         token_type = payload.get("type")
         
-        # Verify token type
         if token_type != "access":
             raise HTTPException(status_code=401, detail="Invalid token type")
         
         if not email:
             raise HTTPException(status_code=401, detail="Invalid token payload")
         
-        # Get user from database
         user = db.query(models.User).filter_by(email=email).first()
         
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Check if account is active
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account has been deactivated")
         
@@ -62,8 +51,6 @@ def get_current_user(
         
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-# ---
 
 # ========== GET PROFILE ==========
 @router.get("/profile", response_model=schemas.UserProfile)
@@ -79,7 +66,6 @@ def update_profile(
     db: Session = Depends(get_db)
 ):
     """Update user profile"""
-    # Update fields if provided
     if data.full_name is not None:
         current_user.full_name = data.full_name
     if data.mobile_number is not None:
@@ -87,7 +73,6 @@ def update_profile(
     if data.date_of_birth is not None:
         current_user.date_of_birth = data.date_of_birth
     
-    # updated_at will be automatically updated by SQLAlchemy
     db.commit()
     db.refresh(current_user)
     
@@ -101,15 +86,12 @@ def change_password_in_app(
     db: Session = Depends(get_db)
 ):
     """Change password when already logged in"""
-    # Verify current password
     if not pwd_context.verify(data.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     
-    # Validate new password
     if len(data.new_password) < 6:
         raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
     
-    # Update password
     current_user.hashed_password = pwd_context.hash(data.new_password)
     db.commit()
     
@@ -123,42 +105,50 @@ def delete_account(
     db: Session = Depends(get_db)
 ):
     """Delete user account permanently"""
-    # Verify password
     if not pwd_context.verify(data.password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Password is incorrect")
     
-    # Delete user
+    # Delete user (cascade will delete predictions)
     db.delete(current_user)
     db.commit()
     
     return {"msg": "Account deleted successfully"}
 
-# ========== UPLOAD AVATAR ========== (THÊM MỚI)
+# ========== UPLOAD AVATAR ========== (SỬA ĐỔI - Dùng S3)
 @router.put("/avatar", response_model=schemas.UserProfile)
 async def upload_avatar(
     avatar: UploadFile = File(...),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Upload user avatar"""
+    """Upload user avatar to S3"""
     
     # Validate image
-    if not file_handler.validate_image(avatar):
+    if not avatar.content_type or not avatar.content_type.startswith('image/'):
         raise HTTPException(
             status_code=400,
-            detail="Invalid image file. Only JPG, JPEG, PNG allowed (max 10MB)"
+            detail="Invalid image file. Only images allowed."
+        )
+    
+    # Validate file extension
+    allowed_extensions = {'jpg', 'jpeg', 'png'}
+    file_extension = avatar.filename.split('.')[-1].lower()
+    if file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, JPEG, PNG files allowed"
         )
     
     try:
-        # Save avatar (will delete old one if exists)
-        avatar_path, avatar_url = await file_handler.save_avatar(
-            avatar, 
+        # Upload avatar to S3 (will delete old one if exists)
+        s3_result = await s3_service.upload_avatar(
+            avatar,
             current_user.id,
             current_user.avatar_url
         )
         
-        # Update user profile
-        current_user.avatar_url = avatar_url
+        # Update user profile with new S3 URL
+        current_user.avatar_url = s3_result['s3_url']
         db.commit()
         db.refresh(current_user)
         

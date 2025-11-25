@@ -1,4 +1,6 @@
+# ============================================
 # STAGE 1: Builder
+# ============================================
 FROM python:3.11-slim AS builder
 
 WORKDIR /build
@@ -12,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements
 COPY requirements.txt .
 
-# Install to user directory
+# Install Python packages to user directory
 RUN pip install --user --no-cache-dir \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     -r requirements.txt
@@ -27,7 +29,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install only runtime dependencies
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     netcat-openbsd \
@@ -36,10 +38,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy Python packages from builder
+# Copy Python packages from builder stage
 COPY --from=builder /root/.local /root/.local
 
-# Set PATH and environment variables
+# Set environment variables
 ENV PATH=/root/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
@@ -48,16 +50,15 @@ ENV PATH=/root/.local/bin:$PATH \
 COPY wait-for-it.sh /app/
 RUN chmod +x /app/wait-for-it.sh
 
-# Copy application files
+# Copy application code
 COPY app/ /app/app/
 COPY models/ /app/models/
 
-# THAY ĐỔI - KHÔNG copy .env vào image (sẽ dùng env_file từ docker-compose)
-# COPY .env /app/.env  # XÓA dòng này
+# NOTE: .env files are NOT copied to image (security best practice)
+# They will be provided via env_file in docker-compose or -e flags
 
-# Create directories for uploads
-RUN mkdir -p /app/uploads && \
-    chmod 755 /app/uploads
+# Create temp directory (optional - for temporary file operations)
+RUN mkdir -p /tmp && chmod 1777 /tmp
 
 # Clean up unnecessary files to reduce image size
 RUN find /root/.local \( -type f -name '*.pyc' -o -name '*.pyo' \) -delete \
@@ -65,14 +66,14 @@ RUN find /root/.local \( -type f -name '*.pyc' -o -name '*.pyo' \) -delete \
     && find /root/.local -type d -name 'tests' -delete 2>/dev/null || true \
     && find /root/.local -type d -name 'test' -delete 2>/dev/null || true \
     && find /root/.local -name '*.dist-info' -exec sh -c 'rm -rf "$1"/RECORD "$1"/INSTALLER' _ {} \; \
-    && du -sh /root/.local
+    && echo "Python packages size:" && du -sh /root/.local
 
 # Expose port
 EXPOSE 8000
 
-# Health check - Cải tiến để kiểm tra cả DB connection
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Run application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
