@@ -47,8 +47,8 @@ ENV PATH=/root/.local/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1
 
 # Copy wait-for-it script
-COPY wait-for-it.sh /app/
-RUN chmod +x /app/wait-for-it.sh
+# COPY wait-for-it.sh /app/
+# RUN chmod +x /app/wait-for-it.sh
 
 # Copy application code
 COPY app/ /app/app/
