@@ -1,4 +1,3 @@
-# app/utils/file_handler.py
 import os
 import uuid
 from pathlib import Path
@@ -7,7 +6,7 @@ from app.config import settings
 
 UPLOAD_DIR = "uploads"
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 10 * 1024 * 1024  
 
 class FileHandler:
     @staticmethod
@@ -27,10 +26,7 @@ class FileHandler:
     
     @staticmethod
     async def save_image(file: UploadFile, user_id: int) -> tuple[str, str]:
-        """
-        Save uploaded image
-        Returns: (local_path, public_url)
-        """
+
         user_dir = Path(UPLOAD_DIR) / str(user_id) / "images"
         user_dir.mkdir(parents=True, exist_ok=True)
         
@@ -57,14 +53,11 @@ class FileHandler:
     
     @staticmethod
     async def save_avatar(file: UploadFile, user_id: int, old_avatar_url: str = None) -> tuple[str, str]:
-        """
-        Save user avatar
-        Returns: (local_path, public_url)
-        """
+
         avatar_dir = Path(UPLOAD_DIR) / str(user_id) / "avatars"
         avatar_dir.mkdir(parents=True, exist_ok=True)
         
-        # Delete old avatar if exists
+
         if old_avatar_url:
             try:
                 old_path = old_avatar_url.replace(f"{settings.BASE_URL}/", '')
@@ -97,15 +90,7 @@ class FileHandler:
     
     @staticmethod
     def get_heatmap_path(image_path: str) -> tuple[str, str]:
-        """
-        Generate heatmap file path from original image path
-        Returns: (local_heatmap_path, public_heatmap_url)
-        
-        Example:
-            Input:  "uploads/1/images/abc123.jpg"
-            Output: ("uploads/1/heatmaps/abc123_heatmap.jpg", 
-                     "http://192.168.1.102:8000/uploads/1/heatmaps/abc123_heatmap.jpg")
-        """
+       
         heatmap_path = image_path.replace('/images/', '/heatmaps/').replace(
             f'.{image_path.split(".")[-1]}', '_heatmap.jpg'
         )
@@ -118,7 +103,6 @@ class FileHandler:
     
     @staticmethod
     def delete_image(image_path: str):
-        """Delete image file"""
         try:
             if os.path.exists(image_path):
                 os.remove(image_path)
@@ -128,20 +112,14 @@ class FileHandler:
     
     @staticmethod
     def delete_heatmap(heatmap_url: str) -> bool:
-        """
-        Delete heatmap file from URL
-        Returns: True if deleted successfully, False otherwise
-        """
+
         try:
-            # Extract local path from URL
             heatmap_path = heatmap_url.replace(f"{settings.BASE_URL}/", '')
             
-            # Check if path is valid (not still a full URL)
             if heatmap_path.startswith('http'):
                 print(f"Invalid heatmap URL format: {heatmap_url}")
                 return False
             
-            # Delete file if exists
             if os.path.exists(heatmap_path):
                 os.remove(heatmap_path)
                 print(f"Deleted heatmap: {heatmap_path}")
@@ -156,10 +134,7 @@ class FileHandler:
     
     @staticmethod
     def get_thumbnail_url(image_url: str) -> str:
-        """
-        Get thumbnail URL
-        For now, just return original image URL
-        """
+
         return image_url
 
 file_handler = FileHandler()

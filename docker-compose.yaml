@@ -1,4 +1,3 @@
-# docker-compose.yaml
 services:
   db:
     image: postgres:15-alpine

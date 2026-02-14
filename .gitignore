@@ -1,20 +1,10 @@
-# ============================================================
-# SKINSIGHT BACKEND - .gitignore
-# ============================================================
 
-# ============================================================
-# PYTHON
-# ============================================================
-
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
 *.so
 
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -34,15 +24,12 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
 *.manifest
 *.spec
 
-# Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
 htmlcov/
 .tox/
 .nox/
@@ -57,98 +44,63 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Translations
 *.mo
 *.pot
 
-# Django stuff:
 *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# Flask stuff:
 instance/
 .webassets-cache
 
-# Scrapy stuff:
 .scrapy
 
-# Sphinx documentation
 docs/_build/
 
-# PyBuilder
 .pybuilder/
 target/
 
-# Jupyter Notebook
 .ipynb_checkpoints
 *.ipynb
 
-# IPython
 profile_default/
 ipython_config.py
 
-# pyenv
 .python-version
 
-# pipenv
 Pipfile.lock
 
-# poetry
 poetry.lock
 
-# pdm
 .pdm.toml
 
-# PEP 582
 __pypackages__/
 
-# Celery stuff
 celerybeat-schedule
 celerybeat.pid
 
-# SageMath parsed files
 *.sage.py
 
-# Environments
-# .env
-# .venv
-# env/
-# venv/
-# ENV/
-# env.bak/
-# venv.bak/
 
-# Spyder project settings
 .spyderproject
 .spyproject
 
-# Rope project settings
 .ropeproject
 
-# mkdocs documentation
 /site
 
-# mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# Pyre type checker
 .pyre/
 
-# pytype static type analyzer
 .pytype/
 
-# Cython debug symbols
 cython_debug/
 
-# ============================================================
-# ML / DATA SCIENCE
-# ============================================================
-
-# Model files (LARGE - don't commit)
 *.pt
 *.ckpt
 *.h5
@@ -158,14 +110,10 @@ cython_debug/
 *.caffemodel
 *.weights
 
-# Except specific small models (if needed)
-# !models/production_model.pth
 
-# Jupyter notebooks
 *.ipynb
 .ipynb_checkpoints/
 
-# Dataset files
 *.csv
 *.tsv
 *.json
@@ -178,7 +126,7 @@ cython_debug/
 *.pkl
 *.pickle
 
-# Logs and checkpoints
+
 logs/
 checkpoints/
 experiments/
@@ -188,91 +136,76 @@ mlruns/
 outputs/
 lightning_logs/
 
-# ============================================================
-# DOCKER
-# ============================================================
 
-# Docker volumes
+
+
 postgres_data/
 mysql_data/
 redis_data/
 
-# Docker override files
+
 docker-compose.override.yml
 docker-compose.*.yml
 !docker-compose.yaml
 
-# ============================================================
-# DATABASE
-# ============================================================
 
-# SQLite
 *.db
 *.sqlite
 *.sqlite3
 
-# PostgreSQL
+
 *.pgsql
 *.sql
 
-# Database dumps
+
 *.dump
 *.backup
 
-# ============================================================
-# UPLOADS / USER DATA
-# ============================================================
 
-# User uploaded files (use volume instead)
 uploads/*
 !uploads/.gitkeep
 
-# Temporary files
+
 temp/
 tmp/
 cache/
 
-# ============================================================
-# IDE / EDITORS
-# ============================================================
 
-# VSCode
+
 .vscode/
 *.code-workspace
 
-# PyCharm
+
 .idea/
 *.iml
 *.ipr
 *.iws
 
-# Sublime Text
+
 *.sublime-project
 *.sublime-workspace
 
-# Vim
+
 *.swp
 *.swo
 *~
 .vim/
 
-# Emacs
+
 *~
 \#*\#
 .\#*
 
-# Visual Studio
+
 .vs/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
 
-# ============================================================
-# OPERATING SYSTEM
-# ============================================================
 
-# macOS
+
+
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -280,7 +213,7 @@ cache/
 .Spotlight-V100
 .Trashes
 
-# Windows
+
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
@@ -290,54 +223,34 @@ ehthumbs_vista.db
 $RECYCLE.BIN/
 *.lnk
 
-# Linux
+
 *~
 .directory
 .Trash-*
 
-# ============================================================
-# TESTING / DEBUGGING
-# ============================================================
 
-# Test files
 test_*.py
 *_test.py
 tests/__pycache__/
 
-# Debug files
+
 *.log
 debug.log
 error.log
 
-# Profiling
+
 *.prof
 *.lprof
 
-# ============================================================
-# DOCUMENTATION
-# ============================================================
 
-# Build docs
 docs/_build/
 docs/.doctrees/
 site/
 
-# Markdown
+
 *.md~
 
-# ============================================================
-# SECURITY / CREDENTIALS
-# ============================================================
 
-# Environment variables
-# .env
-# .env.local
-# .env.*.local
-# .env.development
-# .env.test
-# .env.production
-
-# Secrets
 secrets/
 *.key
 *.pem
@@ -346,49 +259,35 @@ secrets/
 *.p12
 *.pfx
 
-# API keys
 *_api_key.txt
 *_secret.txt
 credentials.json
 
-# SSH keys
 id_rsa
 id_rsa.pub
 *.ppk
 
-# ============================================================
-# CLOUD / DEPLOYMENT
-# ============================================================
 
-# AWS
+
 .aws/
 *.pem
 
-# GCP
 *.json
 !requirements.txt
 
-# Azure
 .azure/
 
-# Terraform
 *.tfstate
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
 
-# ============================================================
-# MISC
-# ============================================================
-
-# Backup files
 *.bak
 *.backup
 *.old
 *.orig
 *.save
 
-# Compressed files
 *.zip
 *.tar
 *.tar.gz
@@ -396,44 +295,33 @@ id_rsa.pub
 *.rar
 *.7z
 
-# Package managers
+
 node_modules/
 package-lock.json
 yarn.lock
 
-# ============================================================
-# PROJECT SPECIFIC
-# ============================================================
 
-# Keep model directory structure but ignore models
-# models/*
-# !models/.gitkeep
-# !models/README.mdgit
 
-# Keep uploads directory structure
+
 uploads/*/
 !uploads/.gitkeep
 
-# Training outputs (if any)
+
 training_outputs/
 model_checkpoints/
 
-# Kaggle outputs
+
 kaggle_outputs/
 *.zip
 
-# Conversion scripts output
+
 converted_models/
 
-# Test images
+
 test_images/
 sample_images/
 
-# ============================================================
-# KEEP THESE FILES (whitelist)
-# ============================================================
 
-# Important configs
 !.gitignore
 !.dockerignore
 !requirements.txt
@@ -441,9 +329,9 @@ sample_images/
 !Dockerfile
 !wait-for-it.sh
 
-# README
+
 !README.md
 !LICENSE
 
-# Environment template
+
 !.env.example

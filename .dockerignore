@@ -1,6 +1,4 @@
-# .dockerignore
 
-# ========== ENVIRONMENT FILES (CRITICAL!) ==========
 .env
 .env.*
 .env.production
@@ -8,7 +6,6 @@
 .env.local
 .env.development
 
-# ========== PYTHON ==========
 __pycache__/
 *.py[cod]
 *$py.class
@@ -35,7 +32,6 @@ wheels/
 pip-log.txt
 pip-delete-this-directory.txt
 
-# ========== IDEs ==========
 .vscode/
 .idea/
 *.swp
@@ -45,39 +41,31 @@ pip-delete-this-directory.txt
 .pydevproject
 .settings/
 
-# ========== OS ==========
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# ========== GIT ==========
 .git/
 .gitignore
 .gitattributes
 .github/
 
-# ========== LOGS ==========
 *.log
 logs/
 
-# ========== DATABASE ==========
 *.db
 *.sqlite3
 *.sql
 
-# ========== UPLOADS (use volume instead) ==========
 uploads/
 
-# ========== NOTEBOOKS ==========
 *.ipynb
 .ipynb_checkpoints/
 
-# ========== DOCUMENTATION ==========
 README.md
 docs/
 *.md
 
-# ========== TESTS ==========
 tests/
 test_*.py
 *_test.py
@@ -87,35 +75,25 @@ pytest_cache/
 htmlcov/
 .tox/
 
-# ========== DOCKER FILES ==========
 docker-compose*.yml
 docker-compose.yaml
 docker-compose.yml
 Dockerfile*
 .dockerignore
 
-# ========== TERRAFORM (if in project) ==========
 *.tfstate
 *.tfstate.backup
 .terraform/
 terraform.tfvars
 *.tfvars
 
-# ========== AWS ==========
 .aws/
 
-# ========== TEMPORARY FILES ==========
 *.tmp
 *.temp
 *.bak
 *.cache
 
-# ========== ML MODELS (Optional - uncomment if needed) ==========
-# models/*.pth  # Uncomment to exclude model weights
-# models/*.pt
-# models/*.h5
-
-# ========== NODE MODULES (if any) ==========
 node_modules/
 npm-debug.log
 yarn-error.log

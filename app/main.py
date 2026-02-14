@@ -1,4 +1,3 @@
-# app/main.py
 import time
 from sqlalchemy.exc import OperationalError
 from fastapi import FastAPI
@@ -9,11 +8,9 @@ from app import models, database, auth, user
 from app.routers import predictions  
 from app.database import engine
 
-# ========== DATABASE CONNECTION ==========
 max_tries = 10
 for i in range(max_tries):
     try:
-        # checkfirst=True: Only create tables if they don't exist
         models.Base.metadata.create_all(bind=engine, checkfirst=True)
         print("Database connected successfully and tables verified")
         break
@@ -23,18 +20,16 @@ for i in range(max_tries):
 else:
     raise RuntimeError("Could not connect to database after multiple attempts")
 
-# ========== FASTAPI APP ==========
 app = FastAPI(
     title="DeepOCT API",
     description="OCT Diagnosis System with AI-powered retinal disease classification",
     version="2.0.0"
 )
 
-# ========== CORS MIDDLEWARE ==========
 allowed_origins = os.getenv("CORS_ORIGINS", "").strip('[]').replace('"', '').split(',')
 if not allowed_origins or allowed_origins == ['']:
     allowed_origins = ["*"]
-    print("⚠️  CORS: Allowing all origins (development mode)")
+    print("CORS: Allowing all origins (development mode)")
 else:
     print(f"CORS enabled for: {allowed_origins}")
 
@@ -46,15 +41,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ========== REGISTER ROUTERS ==========
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(user.router, tags=["User Profile"])
 app.include_router(predictions.router, tags=["Predictions"])
 
-# ========== ROOT ENDPOINT ==========
 @app.get("/")
 def root():
-    """API root endpoint with system information"""
     return {
         "message": "DeepOCT API is running",
         "version": "2.0.0",
@@ -73,7 +65,6 @@ def root():
         }
     }
 
-# ========== HEALTH CHECK ==========
 @app.get("/health")
 def health_check():
     return {

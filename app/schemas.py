@@ -1,9 +1,7 @@
-# app/schemas.py
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Literal, Dict, List
 from datetime import datetime
 
-# ========== AUTH SCHEMAS ==========
 
 class UserCreate(BaseModel):
     full_name: str
@@ -26,7 +24,6 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
     reset_token: str
 
-# ========== USER PROFILE SCHEMAS ==========
 
 class UserProfile(BaseModel):
     id: int
@@ -56,7 +53,6 @@ class DeleteAccountRequest(BaseModel):
     password: str
 
 
-# ========== PREDICTION SCHEMAS ==========
 
 DiseaseType = Literal['CNV', 'DME', 'DRUSEN', 'NORMAL']
 
@@ -66,7 +62,6 @@ class Probabilities(BaseModel):
     DRUSEN: float = Field(..., ge=0.0, le=1.0)
     NORMAL: float = Field(..., ge=0.0, le=1.0)
 
-# --- NEW SCHEMA FOR GRAD-CAM ANALYSIS ---
 class GradCAMAnalysis(BaseModel):
     """Schema chứa các chỉ số định lượng từ Grad-CAM"""
     analysis_status: Literal['SUCCESS', 'FAILED', 'ERROR']
@@ -79,7 +74,6 @@ class GradCAMAnalysis(BaseModel):
     bb_width_pixels: int = Field(..., ge=0, description="Độ rộng (pixel) của Bounding Box bao quanh Hot Area")
     bb_height_pixels: int = Field(..., ge=0, description="Chiều cao (pixel) của Bounding Box bao quanh Hot Area")
     error_detail: Optional[str] = Field(None, description="Thông báo lỗi nếu phân tích thất bại")
-# ------------------------------------------
 
 class PredictionResponse(BaseModel):
     id: str
@@ -89,8 +83,8 @@ class PredictionResponse(BaseModel):
     probabilities: Probabilities
     image_url: str
     heatmap_url: Optional[str] = None
-    analysis_result: Optional[GradCAMAnalysis] = None # <-- ĐÃ BỔ SUNG
-    inference_time: int  # milliseconds
+    analysis_result: Optional[GradCAMAnalysis] = None 
+    inference_time: int  
     created_at: datetime
 
     class Config:
